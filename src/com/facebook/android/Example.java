@@ -82,7 +82,9 @@ public class Example extends Activity {
 
         mRequestButton.setOnClickListener(new OnClickListener() {
             public void onClick(View v) {
-                mAsyncRunner.request("me", new SampleRequestListener());
+                Bundle params = new Bundle();
+                params.putString("fields", "likes");
+                mAsyncRunner.request("me", params, new SampleRequestListener());
                 // mAsyncRunner.request("me?fields=likes", new SampleRequestListener());
             }
         });
@@ -172,26 +174,50 @@ public class Example extends Activity {
     public class SampleRequestListener extends BaseRequestListener {
 
         public void onComplete(final String response, final Object state) {
+            String message = "No data";
             try {
                 // process the response here: executed in background thread
                 Log.d("Facebook-Example", "Response: " + response.toString());
                 JSONObject json = Util.parseJson(response);
-                final String name = json.getString("name");
+                // final String name = json.getString("name");
+                // message = "Hello there, " + name + "!";
+                JSONObject likes = json.getJSONObject("likes");
+                JSONArray data = likes.getJSONArray("data");
+                message = likes;
+                
 
+            } catch (JSONException e) {
+                Log.w("Facebook-Example", "JSON Error in response");
+                message = "JSONException "+e.getMessage()+", "+response;
+            } catch (FacebookError e) {
+                Log.w("Facebook-Example", "Facebook Error: " + e.getMessage());
+                message = "FacebookError "+e.getMessage()+", "+response;
+            } finally {
                 // then post the processed result back to the UI thread
                 // if we do not do this, an runtime exception will be generated
                 // e.g. "CalledFromWrongThreadException: Only the original
                 // thread that created a view hierarchy can touch its views."
-                Example.this.runOnUiThread(new Runnable() {
-                    public void run() {
-                        mText.setText("Hello there, " + name + "!");
-                    }
-                });
-            } catch (JSONException e) {
-                Log.w("Facebook-Example", "JSON Error in response");
-            } catch (FacebookError e) {
-                Log.w("Facebook-Example", "Facebook Error: " + e.getMessage());
+                new TextUpdater(message).update();
+                // Example.this.runOnUiThread(new Runnable() {
+                //     public void run() {
+                //         mText.setText(message);
+                //     }
+                // });
             }
+        }
+    }
+    
+    class TextUpdater {
+        private String message;
+        TextUpdater(String message) {
+            this.message = message;
+        }
+        public void update() {
+            Example.this.runOnUiThread(new Runnable() {
+                public void run() {
+                    mText.setText(message);
+                }
+            });
         }
     }
 
